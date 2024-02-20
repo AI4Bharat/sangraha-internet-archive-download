@@ -84,9 +84,9 @@ def downloadHelper(arguments):
     dowload_identifier_data(identifier=arguments[0],language=arguments[1],destination_folder=arguments[2],pdf_only=arguments[3])
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--languages",action='store', dest='languageList',type=str, nargs='*',help="List of languages to download",required=True)
+parser.add_argument("--languages",action='store', dest='languageList',type=str, nargs='*',help="List of languages to download")
 parser.add_argument("--pdf_only",type=bool,default=True,help="To download only associated PDF Files")
-parser.add_argument("--full",type=bool,default=False,help='Download Entire Indian Language Data')
+parser.add_argument("--id_only",type=bool,default=False,help="To download only identifiers file")
 
 if __name__=="__main__":
     args = parser.parse_args()
@@ -94,7 +94,10 @@ if __name__=="__main__":
     data_path = "../../data/"
     if not os.path.exists(data_path):
         os.makedirs(data_path)
-    identifiersPath = downloadIdentifiers(args.languageList,languagesToDownloadCodes,data_path)
+    if args.languageList:
+        identifiersPath = downloadIdentifiers(args.languageList,languagesToDownloadCodes,data_path)
+    else:
+        identifiersPath = downloadIdentifiers(languages,languages_code,data_path)
     identifiersDf = pd.read_csv(identifiersPath)
     identifiersWithLanguage = []
     for idx,row in identifiersDf.iterrows():
@@ -129,14 +132,16 @@ if __name__=="__main__":
     print(f"Identifiers Metadata saved to {data_path}/identifiersMetaData.csv")
     metaExecutor.shutdown()
 
-    downloadExecutor = concurrent.futures.ProcessPoolExecutor()
-    print("Downloading Associated Files with Identifiers and Languages...")
-    downloadSize = sum(resultDf["pdfDataSize"]) if args.pdf_only else sum(resultDf["totalDataSize"])
-    print(f"Download Size : {downloadSize/(1024*1024)} MB")
-    downloadResults = list(
-        tqdm(downloadExecutor.map(downloadHelper, identifiersWithLanguage), total=len(identifiersWithLanguage))
-    )
-    downloadExecutor.shutdown()
-    print("Files Downloaded from archive.org for associated Identifiers and Languages.")
-
+    if not args.id_only:
+        downloadExecutor = concurrent.futures.ProcessPoolExecutor()
+        print("Downloading Associated Files with Identifiers and Languages...")
+        downloadSize = sum(resultDf["pdfDataSize"]) if args.pdf_only else sum(resultDf["totalDataSize"])
+        print(f"Download Size : {downloadSize/(1024*1024)} MB")
+        downloadResults = list(
+            tqdm(downloadExecutor.map(downloadHelper, identifiersWithLanguage), total=len(identifiersWithLanguage))
+        )
+        downloadExecutor.shutdown()
+        print("Files Downloaded from archive.org for associated Identifiers and Languages.")
+    else:
+        print("Download Complete")
 
